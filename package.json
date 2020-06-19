@@ -13,7 +13,7 @@
   },
   "main": "main.js",
   "files": [
-    "index.js",
+    "index.min.js",
     "index.debug.js",
     "main.js",
     "src",

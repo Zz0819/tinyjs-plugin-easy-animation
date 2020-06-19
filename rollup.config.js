@@ -10,7 +10,7 @@ const pkg = require('./package.json');
 
 const production = process.env.BUILD === 'production';
 const cjs = process.env.BUILD === 'cjs';
-const file = production ? `index.js` : (cjs ? `main.js` : `index.debug.js`);
+const file = production ? `index.min.js` : (cjs ? `main.js` : `index.debug.js`);
 const format = cjs ? 'cjs' : 'umd';
 const banner = `/*!
  * Name: ${pkg.name}
