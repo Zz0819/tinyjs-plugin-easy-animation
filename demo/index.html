@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>tinyjs-plugin-easy-animation Demo</title>
+  <meta content="yes" name="apple-mobile-web-app-capable"/>
+  <meta content="yes" name="apple-touch-fullscreen"/>
+  <meta content="telephone=no,email=no" name="format-detection"/>
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no"/>
+  <style>
+    html, body, p, div {
+      margin: 0;
+      padding: 0;
+    }
+  </style>
+</head>
+<body>
+
+<script src="http://yiqi.assets.alipay.net/qingting/tiny/1.4.0/tiny.debug.js"></script>
+<script src="../index.debug.js"></script>
+
+<script type="text/javascript">
+  // 新建 App
+  var app = new Tiny.Application({
+    width: 320,
+    height: 320,
+    fixSize: true,
+  });
+
+  var container = new Tiny.Container();
+  app.run(container);
+
+  var sprite = Tiny.Sprite.fromImage('https://gw.alipayobjects.com/as/g/tiny/resources/1.0.0/images/logo.png');
+  container.addChild(sprite);
+  sprite.setAnchor(0.5, 0.5);
+  sprite.setPosition(Tiny.WIN_SIZE.width / 2, Tiny.WIN_SIZE.height / 2);
+  sprite.plugins[ 'easyAnimation' ].setAnimationConfig({
+    popup: [
+      {
+        property: 'scale.x',
+        easeFunction: 'Linear.None',
+        clips: [
+          { startTime: 0, value: 1 },
+          { startTime: 1000, value: 0 },
+          { startTime: 2000, value: 1 },
+        ],
+      },
+      {
+        property: 'scale.y',
+        easeFunction: 'Linear.None',
+        clips: [
+          { startTime: 0, value: 1 },
+          { startTime: 1000, value: 0 },
+          { startTime: 2000, value: 1 },
+        ],
+      },
+      {
+        property: 'alpha',
+        easeFunction: 'Linear.None',
+        clips: [
+          { startTime: 0, value: 1 },
+          { startTime: 1000, value: 0 },
+          { startTime: 3000, value: 1 },
+        ],
+      },
+    ],
+    fadeInOut: [
+      {
+        property: 'alpha',
+        easeFunction: 'Linear.None',
+        duration: 3000,
+        clips: [
+          { percent: '0%', value: 1 },
+          { percent: '50%', value: 0 },
+          { percent: '100%', value: 1 },
+        ],
+      },
+    ],
+    rotate: [
+      {
+        property: 'rotation',
+        easeFunction: 'Back.In',
+        duration: 1000,
+        clips: [
+          { percent: '0%', value: 0 },
+          { percent: '50%', value: Tiny.deg2radian(360) },
+          { percent: '100%', value: Tiny.deg2radian(0) },
+        ],
+      }, {
+        property: 'scale.x',
+        easeFunction: 'Back.In',
+        duration: 1000,
+        clips: [
+          { percent: '0%', value: 1 },
+          { percent: '50%', value: 0 },
+          { percent: '100%', value: 1 },
+        ],
+      }, {
+        property: 'scale.y',
+        easeFunction: 'Back.In',
+        duration: 1000,
+        clips: [
+          { percent: '0%', value: 1 },
+          { percent: '50%', value: 0 },
+          { percent: '100%', value: 1 },
+        ],
+      },
+    ],
+    scale: [
+      {
+        property: 'scale.x',
+        easeFunction: 'Linear.None',
+        duration: 300,
+        clips: [
+          { percent: '0%', value: 1 },
+          { percent: '50%', value: 1.1 },
+          { percent: '100%', value: 1 },
+        ],
+      }, {
+        property: 'scale.y',
+        easeFunction: 'Linear.None',
+        duration: 300,
+        clips: [
+          { percent: '0%', value: 1 },
+          { percent: '50%', value: 1.1 },
+          { percent: '100%', value: 1 },
+        ],
+      },
+    ],
+  });
+  sprite.plugins[ 'easyAnimation' ].play('scale', 2);
+  sprite.plugins[ 'easyAnimation' ].play('popup', 2);
+  sprite.on('onAnimationClipEnd', (data) => {
+    console.log(data);
+  });
+  sprite.on('onAnimationEnd', (animationName) => {
+    if (animationName === 'popup') {
+      sprite.plugins[ 'easyAnimation' ].play('fadeInOut');
+    }
+
+    if (animationName === 'fadeInOut') {
+      sprite.plugins[ 'easyAnimation' ].play('rotate');
+    }
+  });
+</script>
+</body>
+</html>
