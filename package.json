@@ -11,7 +11,7 @@
     "type": "git",
     "url": "https://github.com/ant-tinyjs/tinyjs-plugin-easy-animation.git"
   },
-  "main": "main.js",
+  "main": "index.debug.js",
   "files": [
     "index.min.js",
     "index.debug.js",
