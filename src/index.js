@@ -29,6 +29,7 @@ class EasyAnimation {
     this.displayObject = displayObject;
     this.tweenGroup = new Tiny.TWEEN.Group();
     this.tweenAnimationCache = {};
+    this.playingAimationCompleteTimes = {};
     this.playingAnimation = '';
   }
 
@@ -43,6 +44,7 @@ class EasyAnimation {
       // eslint-disable-next-line no-useless-call
       this.displayObject.containerUpdateTransform.call(this.displayObject);
     };
+
     const tweenConfigs = this.__parseAnimationConfig(config);
     this.__createTween(tweenConfigs);
   }
@@ -54,11 +56,15 @@ class EasyAnimation {
    */
   play(animationName, playTimes) {
     const animations = this.tweenAnimationCache[ animationName ];
+    if (!animations) {
+      throw new Error(`can not find animationName {${animationName}} in your configs.`);
+    }
+
     animations.forEach(animation => {
-      animation.repeat(playTimes || 0);
-      animation.yoyo(!!playTimes);
+      animation.repeat(playTimes - 1);
       animation.start();
     });
+
     this.playingAnimation = animationName;
   }
 
@@ -72,6 +78,16 @@ class EasyAnimation {
     });
   }
 
+  /**
+   * @method clear 清理所有的动画缓存及配置
+   */
+  clear() {
+    this.tweenAnimationCache = {};
+    this.tweenGroup.removeAll();
+    this.playingAnimation = '';
+    this.playingAimationCompleteTimes = {};
+  }
+
   __createTween(tweenConfigs) {
     const animationNames = Object.keys(tweenConfigs);
 
@@ -81,13 +97,14 @@ class EasyAnimation {
 
       this.tweenAnimationCache[ animationName ] = propertyKeys.map(property => {
         const configs = tweenConfig[ property ];
+        // eslint-disable-next-line no-unused-vars
+        let tweenCount = 0;
 
-        return configs.reduce((prevTween, curItem) => {
+        const tweenAnimation = configs.reduce((prevTween, curItem) => {
           const { property, target, to, easeFunction, duration } = curItem;
           const _updateProperty = property.split('.');
           const _easeFunction = easeFunction.split('.').reduce((prev, cur) => prev[ cur ], Tiny.TWEEN.Easing);
           const tween = new Tiny.TWEEN.Tween(target);
-          const initValue = target[ property ];
           tween.animationName = animationName;
           tween.to(to, duration);
           tween.easing(_easeFunction);
@@ -100,17 +117,19 @@ class EasyAnimation {
             this.displayObject[ _updateProperty[ 0 ] ] = target[ property ];
           });
           tween.onComplete((data) => {
+            const playingAnimations = this.tweenAnimationCache[ this.playingAnimation ];
+            const animationTotalCount = playingAnimations.reduce((prev, cur) => prev + cur.tweenCount, 0);
+
+            this.__setCurAnimationCompleteTimes(this.playingAnimation);
             this.displayObject.emit('onAnimationClipEnd', data);
-            // 异步一下，保证 tweenGroup 数据正确
-            setTimeout(() => {
-              const tweenLeft = this.tweenGroup.getAll();
-              if (!tweenLeft.filter(tween => tween.animationName === this.playingAnimation).length) {
-                this.displayObject.emit('onAnimationEnd', this.playingAnimation);
-                target[ property ] = initValue;
-              }
-            }, 0);
+
+            if (this.__getCurAnimationCompleteTimes(this.playingAnimation) === animationTotalCount) {
+              this.__setCurAnimationCompleteTimes(this.playingAnimation, 0);
+              this.displayObject.emit('onAnimationEnd', this.playingAnimation);
+            }
           });
           this.tweenGroup.add(tween);
+          tweenCount++;
 
           if (!prevTween) {
             return tween;
@@ -118,8 +137,30 @@ class EasyAnimation {
 
           return prevTween.chain(tween);
         }, null);
+
+        tweenAnimation.tweenCount = tweenCount;
+
+        return tweenAnimation;
       });
     });
+  }
+
+  __getCurAnimationCompleteTimes(animationName) {
+    return this.playingAimationCompleteTimes[ animationName ];
+  }
+
+  __setCurAnimationCompleteTimes(animationName, times) {
+    if (times) {
+      this.playingAimationCompleteTimes[ animationName ] = times;
+
+      return;
+    }
+
+    if (this.playingAimationCompleteTimes[ animationName ]) {
+      this.playingAimationCompleteTimes[ animationName ]++;
+    } else {
+      this.playingAimationCompleteTimes[ animationName ] = 1;
+    }
   }
 
   __parseAnimationConfig(config) {
