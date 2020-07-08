@@ -56,7 +56,7 @@ class EasyAnimation {
     const animations = this.tweenAnimationCache[ animationName ];
     animations.forEach(animation => {
       animation.repeat(playTimes || 0);
-      animation.yoyo(playTimes);
+      animation.yoyo(!!playTimes);
       animation.start();
     });
     this.playingAnimation = animationName;
