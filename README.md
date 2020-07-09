@@ -163,6 +163,51 @@ var config = {
     ]
   }
 ```
+方法
+```js
+    /**
+    * @method setAnimationConfig 设置动画配置
+    * @for EasyAnimation
+    * @param {Object} config 动画描述文件
+    */
+    EasyAnimation.prototype.setAnimationConfig(config);
+
+    /**
+    * @method play 播放动画
+    * @param {String} animationName 播放的动画名称（配置文件中定义）
+    * @param {Number} playTimes 当前动画播放的次数
+    */
+    EasyAnimation.prototype.setAnimationConfig(animationName, playTimes);
+
+    /**
+    * @method stop 停止动画
+    */
+    EasyAnimation.prototype.stop();
+
+    /**
+    * @method clear 清理所有的动画缓存及配置
+    */
+    EasyAnimation.prototype.clear();
+```
+事件
+```js
+// easy-animation 会在动画片段播完和整体动画播完，在对应的 DisplayObject emit 两个事件。
+
+// onAnimationClipEnd 在每个 clips 结束后都会 emit 对应的事件。
+DisplayObject.on('onAnimationClipEnd', data => {
+  // data 数据是对应的 property 结束的键值对；
+  // {scale.x: 0.4}
+  console.log(data);
+});
+
+// onAnimationEnd 某个动画完整结束后回调，playTimes 多次会等到全部播放完成触发。
+DisplayObject.on('onAnimationEnd', animationName => {
+  // animationName 对应的是 config 中定义的动画名称
+  // popup
+  console.log(animationName);
+});
+
+```
 
 ## 依赖
 - `Tiny.js`: [Link](http://tinyjs.net/api)

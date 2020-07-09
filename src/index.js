@@ -30,7 +30,10 @@ class EasyAnimation {
     this.tweenGroup = new Tiny.TWEEN.Group();
     this.tweenAnimationCache = {};
     this.playingAimationCompleteTimes = {};
+    this.timer = [];
     this.playingAnimation = '';
+    this.playTimes = 1;
+    this.playing = false;
   }
 
   /**
@@ -60,22 +63,57 @@ class EasyAnimation {
       throw new Error(`can not find animationName {${animationName}} in your configs.`);
     }
 
-    animations.forEach(animation => {
-      animation.repeat(playTimes - 1);
-      animation.start();
-    });
+    if (this.playing) {
+      return;
+    }
 
+    this.playTimes = playTimes || 1;
+    this.playing = true;
     this.playingAnimation = animationName;
+
+    if (!isUndefined(playTimes)) {
+      const hasChainAnimationArr = animations.filter(animation => animation._chainedTweens.length);
+      const noChainAnimationArr = animations.filter(animation => !animation._chainedTweens.length);
+
+      if (hasChainAnimationArr.length) {
+        const hasChainArrTotalDurationArr = hasChainAnimationArr.map(item => item.totalDuration);
+        const maxDuration = Math.max(...hasChainArrTotalDurationArr);
+
+        for (let i = 0; i < playTimes; i++) {
+          const timer = setTimeout(() => {
+            hasChainAnimationArr.forEach(animation => {
+              animation.start();
+            });
+          }, i * maxDuration);
+
+          this.timer.push(timer);
+        }
+      }
+
+      noChainAnimationArr.forEach(animation => {
+        animation.repeat(playTimes - 1);
+        animation.start();
+      });
+    } else {
+      animations.forEach(animation => {
+        animation.start();
+      });
+    }
   }
 
   /**
-   * @method stop 暂停动画
+   * @method stop 停止动画
    */
   stop() {
     const animations = this.tweenGroup.getAll();
     animations.forEach(animation => {
       animation.stop();
     });
+    this.playing = false;
+    this.timer.forEach(timer => clearTimeout(timer));
+    this.__setCurAnimationCompleteTimes(this.playingAnimation, 0);
+    this.playingAnimation = '';
+    this.playTimes = 1;
   }
 
   /**
@@ -86,6 +124,9 @@ class EasyAnimation {
     this.tweenGroup.removeAll();
     this.playingAnimation = '';
     this.playingAimationCompleteTimes = {};
+    this.timer = [];
+    this.playTimes = 1;
+    this.playing = false;
   }
 
   __createTween(tweenConfigs) {
@@ -99,12 +140,14 @@ class EasyAnimation {
         const configs = tweenConfig[ property ];
         // eslint-disable-next-line no-unused-vars
         let tweenCount = 0;
+        let totalDuration = 0;
 
         const tweenAnimation = configs.reduce((prevTween, curItem) => {
           const { property, target, to, easeFunction, duration } = curItem;
           const _updateProperty = property.split('.');
           const _easeFunction = easeFunction.split('.').reduce((prev, cur) => prev[ cur ], Tiny.TWEEN.Easing);
           const tween = new Tiny.TWEEN.Tween(target);
+          const initValue = target[ property ];
           tween.animationName = animationName;
           tween.to(to, duration);
           tween.easing(_easeFunction);
@@ -118,18 +161,30 @@ class EasyAnimation {
           });
           tween.onComplete((data) => {
             const playingAnimations = this.tweenAnimationCache[ this.playingAnimation ];
+
+            if (!playingAnimations) {
+              return;
+            }
+
+            const noChainAnimation = playingAnimations.filter(animation => !animation._chainedTweens.length) || [];
+            const noChainAnimationCount = noChainAnimation.length;
             const animationTotalCount = playingAnimations.reduce((prev, cur) => prev + cur.tweenCount, 0);
+            const actAnimationCount = (animationTotalCount - noChainAnimationCount) * this.playTimes + noChainAnimationCount;
 
             this.__setCurAnimationCompleteTimes(this.playingAnimation);
             this.displayObject.emit('onAnimationClipEnd', data);
+            target[ property ] = initValue;
 
-            if (this.__getCurAnimationCompleteTimes(this.playingAnimation) === animationTotalCount) {
+            if (this.__getCurAnimationCompleteTimes(this.playingAnimation) === actAnimationCount) {
               this.__setCurAnimationCompleteTimes(this.playingAnimation, 0);
               this.displayObject.emit('onAnimationEnd', this.playingAnimation);
+              this.playing = false;
+              this.playTimes = 1;
             }
           });
           this.tweenGroup.add(tween);
           tweenCount++;
+          totalDuration += duration;
 
           if (!prevTween) {
             return tween;
@@ -139,6 +194,7 @@ class EasyAnimation {
         }, null);
 
         tweenAnimation.tweenCount = tweenCount;
+        tweenAnimation.totalDuration = totalDuration;
 
         return tweenAnimation;
       });
@@ -150,7 +206,7 @@ class EasyAnimation {
   }
 
   __setCurAnimationCompleteTimes(animationName, times) {
-    if (times) {
+    if (!isUndefined(times)) {
       this.playingAimationCompleteTimes[ animationName ] = times;
 
       return;
