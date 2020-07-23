@@ -149,7 +149,7 @@ class EasyAnimation {
         const configs = tweenConfig[ property ];
         let tweenCount = 0;
 
-        const tweenAnimation = configs.reduce((prevTween, curItem) => {
+        let tweenAnimation = configs.map((curItem) => {
           const { property, target, to, easeFunction, duration } = curItem;
           const _updateProperty = property.split('.');
           const _easeFunction = easeFunction.split('.').reduce((prev, cur) => prev[ cur ], Tiny.TWEEN.Easing);
@@ -207,15 +207,11 @@ class EasyAnimation {
           this.tweenGroup.add(tween);
           tweenCount++;
 
-          if (!prevTween) {
-            return tween;
-          }
+          return tween;
+        });
 
-          return prevTween.chain(tween);
-        }, null);
-
+        tweenAnimation = tweenAnimation[ 0 ].chain(...tweenAnimation.slice(1));
         tweenAnimation.tweenCount = tweenCount;
-
         return tweenAnimation;
       });
     });
