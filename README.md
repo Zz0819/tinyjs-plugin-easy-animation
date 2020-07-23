@@ -2,10 +2,6 @@
 
 > a easy way to use tiny tween animation
 
-## 查看demo
-
-http://tinyjs.net/plugins/tinyjs-plugin-easy-animation.html#demo
-
 ## 引用方法
 
 - 推荐作为依赖使用
@@ -14,8 +10,8 @@ http://tinyjs.net/plugins/tinyjs-plugin-easy-animation.html#demo
 
 - 也可以直接引用线上cdn地址，注意要使用最新的版本号，例如：
 
-  - https://gw.alipayobjects.com/os/lib/tinyjs-plugin-easy-animation/0.0.1/index.min.js
-  - https://gw.alipayobjects.com/os/lib/tinyjs-plugin-easy-animation/0.0.1/index.debug.js
+  - https://gw.alipayobjects.com/os/lib/tinyjs-plugin-easy-animation/{version}/index.min.js
+  - https://gw.alipayobjects.com/os/lib/tinyjs-plugin-easy-animation/{version}/index.debug.js
 
 ## 起步
 首先当然是要引入，推荐`NPM`方式，当然你也可以使用`CDN`或下载独立版本，先从几个例子入手吧！
@@ -211,7 +207,3 @@ DisplayObject.on('onAnimationEnd', animationName => {
 
 ## 依赖
 - `Tiny.js`: [Link](http://tinyjs.net/api)
-
-## API文档
-
-http://tinyjs.net/plugins/tinyjs-plugin-easy-animation.html#docs

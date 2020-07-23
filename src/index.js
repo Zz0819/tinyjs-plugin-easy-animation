@@ -196,11 +196,11 @@ class EasyAnimation {
               }
 
               if (clipCompleteTimes === animationPlayCount) {
-                this.__setAnimationClipCompleteTimes(this.playingAnimation, 0);
-                this.displayObject.emit('onAnimationEnd', this.playingAnimation);
                 this.playing = false;
+                this.__setAnimationClipCompleteTimes(this.playingAnimation, 0);
                 this.playTimes = 1;
                 this.chainAnimationCompleteTimes = 0;
+                this.displayObject.emit('onAnimationEnd', this.playingAnimation);
               }
             }
           });
@@ -212,6 +212,7 @@ class EasyAnimation {
 
         tweenAnimation = tweenAnimation[ 0 ].chain(...tweenAnimation.slice(1));
         tweenAnimation.tweenCount = tweenCount;
+
         return tweenAnimation;
       });
     });
@@ -243,7 +244,7 @@ class EasyAnimation {
     animationNames.forEach(animationName => {
       const curAnimationConfig = config[ animationName ];
       curAnimationConfig.forEach(animation => {
-        let { property, easeFunction, duration, clips } = animation;
+        let { property, easeFunction = 'Linear.None', duration, clips } = animation;
 
         clips.map(item => {
           const { percent } = item;
@@ -283,7 +284,7 @@ class EasyAnimation {
               [ property ]: clips[ index + 1 ].value,
             },
             duration: _duration,
-            easeFunction,
+            easeFunction: clip.easeFunction || easeFunction,
           };
 
           if (tweenParams[ property ]) {

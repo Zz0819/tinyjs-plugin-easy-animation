@@ -47,7 +47,6 @@
     popup: [
       {
         property: 'scale.x',
-        easeFunction: 'Linear.None',
         clips: [
           { startTime: 0, value: 1 },
           { startTime: 1000, value: 0 },
@@ -56,7 +55,6 @@
       },
       {
         property: 'scale.y',
-        easeFunction: 'Linear.None',
         clips: [
           { startTime: 0, value: 1 },
           { startTime: 1000, value: 0 },
@@ -65,7 +63,6 @@
       },
       {
         property: 'alpha',
-        easeFunction: 'Linear.None',
         clips: [
           { startTime: 0, value: 1 },
           { startTime: 3000, value: 0.1 },
@@ -145,11 +142,13 @@
       },
       {
         property: 'scale.x',
-        easeFunction: 'Linear.None',
+        easeFunction: 'Quartic.InOut',
         duration: 1000,
         clips: [
-          { percent: '0%', value: 0.3 },
-          { percent: '50%', value: 0.4 },
+          { percent: '0%', value: 0.3, easeFunction: 'Bounce.In' },
+          { percent: '25%', value: 0.4 },
+          { percent: '50%', value: 0.3, easeFunction: 'Bounce.InOut' },
+          { percent: '75%', value: 0.4 },
           { percent: '100%', value: 0.3 },
         ],
       }, {

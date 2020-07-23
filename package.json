@@ -1,6 +1,6 @@
 {
   "name": "tinyjs-plugin-easy-animation",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "author": "zhaizheng.zz",
   "description": "a easy way to use tiny tween animation",
   "keywords": [
@@ -9,7 +9,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/ant-tinyjs/tinyjs-plugin-easy-animation.git"
+    "url": "https://github.com/Zz0819/tinyjs-plugin-easy-animation"
   },
   "main": "index.debug.js",
   "files": [
@@ -66,7 +66,7 @@
     "sinon-chai": "^2.8.0"
   },
   "bugs": {
-    "url": "https://github.com/ant-tinyjs/tinyjs-plugin-easy-animation/issues"
+    "url": "https://github.com/Zz0819/tinyjs-plugin-easy-animation/issues"
   },
-  "homepage": "https://github.com/ant-tinyjs/tinyjs-plugin-easy-animation#readme"
+  "homepage": "https://github.com/Zz0819/tinyjs-plugin-easy-animation#readme"
 }
