@@ -173,7 +173,7 @@ var config = {
     * @param {String} animationName 播放的动画名称（配置文件中定义）
     * @param {Number} playTimes 当前动画播放的次数
     */
-    EasyAnimation.prototype.setAnimationConfig(animationName, playTimes);
+    EasyAnimation.prototype.play(animationName, playTimes);
 
     /**
     * @method stop 停止动画
