@@ -71,12 +71,7 @@ class EasyAnimation {
     this.playTimes = playTimes || 1;
     this.playing = true;
     this.playingAnimation = animationName;
-
-    if (!isUndefined(playTimes) && playTimes > 1) {
-      this.__playMoreTimesAnimation(animationName, playTimes);
-    } else {
-      this.__playAnimation(animationName);
-    }
+    this.__playAnimation(animationName);
   }
 
   /**
@@ -114,30 +109,6 @@ class EasyAnimation {
     });
   }
 
-  __playMoreTimesAnimation(animationName, playTimes) {
-    this.__playChainAnimation(animationName);
-    this.__playNoChainAnimation(animationName, playTimes);
-  }
-
-  __playChainAnimation(animationName) {
-    const animations = this.tweenAnimationCache[ animationName ];
-    const hasChainAnimationArr = animations.filter(animation => animation._chainedTweens.length);
-
-    hasChainAnimationArr.forEach(animation => {
-      animation.start();
-    });
-  }
-
-  __playNoChainAnimation(animationName, playTimes) {
-    const animations = this.tweenAnimationCache[ animationName ];
-    const noChainAnimationArr = animations.filter(animation => !animation._chainedTweens.length);
-
-    noChainAnimationArr.forEach(animation => {
-      animation.repeat(playTimes === Infinity ? Infinity : playTimes - 1);
-      animation.start();
-    });
-  }
-
   __createTween(tweenConfigs) {
     const animationNames = Object.keys(tweenConfigs);
 
@@ -148,8 +119,8 @@ class EasyAnimation {
       this.tweenAnimationCache[ animationName ] = propertyKeys.map(property => {
         const configs = tweenConfig[ property ];
         let tweenCount = 0;
-
-        let tweenAnimation = configs.map((curItem) => {
+        let firstTween = null;
+        let tweenAnimation = configs.reduce((prevItem, curItem, index) => {
           const { property, target, to, easeFunction, duration } = curItem;
           const _updateProperty = property.split('.');
           const _easeFunction = easeFunction.split('.').reduce((prev, cur) => prev[ cur ], Tiny.TWEEN.Easing);
@@ -174,9 +145,7 @@ class EasyAnimation {
             }
 
             const animationTotalCount = playingAnimations.reduce((prev, cur) => prev + cur.tweenCount, 0);
-            const noChainAnimationCount = playingAnimations.filter(animation => !animation._chainedTweens.length).length;
-            const chainAnimationCount = animationTotalCount - noChainAnimationCount;
-            const animationPlayCount = chainAnimationCount * this.playTimes + noChainAnimationCount;
+            const animationPlayCount = animationTotalCount * this.playTimes;
 
             this.__setAnimationClipCompleteTimes(this.playingAnimation);
             this.displayObject.emit('onAnimationClipEnd', data);
@@ -185,14 +154,20 @@ class EasyAnimation {
             const clipCompleteTimes = this.__getAnimationClipCompleteTimes(this.playingAnimation);
 
             if (this.playTimes === Infinity) {
-              if (chainAnimationCount === clipCompleteTimes) {
-                this.__playChainAnimation(this.playingAnimation);
+              if (animationTotalCount === clipCompleteTimes) {
                 this.__setAnimationClipCompleteTimes(this.playingAnimation, 0);
+                // 延迟一下，修复tween状态改变不及时的问题
+                requestAnimationFrame(() => {
+                  this.__playAnimation(this.playingAnimation);
+                });
               }
             } else {
-              if (clipCompleteTimes % chainAnimationCount === 0 && this.playTimes > this.chainAnimationCompleteTimes + 1) {
-                this.__playChainAnimation(this.playingAnimation);
+              if (clipCompleteTimes % animationTotalCount === 0 && this.playTimes > this.chainAnimationCompleteTimes + 1) {
                 this.chainAnimationCompleteTimes++;
+                // 延迟一下，修复tween状态改变不及时的问题
+                requestAnimationFrame(() => {
+                  this.__playAnimation(this.playingAnimation);
+                });
               }
 
               if (clipCompleteTimes === animationPlayCount) {
@@ -207,10 +182,19 @@ class EasyAnimation {
           this.tweenGroup.add(tween);
           tweenCount++;
 
-          return tween;
-        });
+          if (!prevItem) {
+            firstTween = tween;
+            return tween;
+          }
 
-        tweenAnimation = tweenAnimation[ 0 ].chain(...tweenAnimation.slice(1));
+          prevItem.chain(tween);
+
+          if (!configs[ index + 1 ]) {
+            return firstTween;
+          } else {
+            return tween;
+          }
+        }, null);
         tweenAnimation.tweenCount = tweenCount;
 
         return tweenAnimation;

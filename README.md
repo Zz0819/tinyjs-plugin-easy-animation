@@ -101,12 +101,16 @@ Object(config)(
     // 属性参考：http://tinyjs.net/api/tiny.displayobject.html
     property(动画属性): String,
     // 缓动参考：https://sole.github.io/tween.js/examples/03_graphs.html
+    // 未配置则默认使用 Linear.None
     easeFunction(动画缓动): String,
     // clips使用 startTime 模式时，可不填
     duration(动画时长): Number,
     // percent 模式和 startTime 模式 2选1，如同时存在优先使用 startTime。
     // percent 模式必填 duration
     clips(动画片段): Array {
+      // 缓动参考：https://sole.github.io/tween.js/examples/03_graphs.html
+      // 优先使用动画片段缓动公式，如未配置则默认使用整个动画的缓动公式。
+      easeFunction(动画缓动): String,
       // 例如：'30%'
       percent(动画时间线进度百分比): String,
       // （毫秒） 例如：2000
