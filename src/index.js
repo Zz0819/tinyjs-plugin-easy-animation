@@ -30,7 +30,6 @@ class EasyAnimation {
     this.tweenGroup = new Tiny.TWEEN.Group();
     this.tweenAnimationCache = {};
     this.playingAimationCompleteTimes = {};
-    this.timer = [];
     this.playingAnimation = '';
     this.playTimes = 1;
     this.chainAnimationCompleteTimes = 0;
@@ -96,7 +95,6 @@ class EasyAnimation {
     this.tweenGroup.removeAll();
     this.playingAnimation = '';
     this.playingAimationCompleteTimes = {};
-    this.timer = [];
     this.playTimes = 1;
     this.playing = false;
   }
@@ -124,7 +122,7 @@ class EasyAnimation {
           const { property, target, to, easeFunction, duration } = curItem;
           const _updateProperty = property.split('.');
           const _easeFunction = easeFunction.split('.').reduce((prev, cur) => prev[ cur ], Tiny.TWEEN.Easing);
-          const tween = new Tiny.TWEEN.Tween(target);
+          const tween = new Tiny.TWEEN.Tween(target, this.tweenGroup);
           const initValue = target[ property ];
           tween.animationName = animationName;
           tween.to(to, duration);
@@ -179,7 +177,6 @@ class EasyAnimation {
               }
             }
           });
-          this.tweenGroup.add(tween);
           tweenCount++;
 
           if (!prevItem) {
