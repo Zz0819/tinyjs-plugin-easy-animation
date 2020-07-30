@@ -18,7 +18,7 @@
 
 引用 Tiny.js 源码
 ``` html
-<script src="https://gw.alipayobjects.com/os/lib/tinyjs/tiny/1.4.0/tiny.js"></script>
+<script src="https://gw.alipayobjects.com/os/lib/tinyjs/tiny/1.5.0/tiny.js"></script>
 ```
 ``` js
 require('tinyjs-plugin-easy-animation');
