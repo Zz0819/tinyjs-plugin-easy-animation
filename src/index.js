@@ -27,7 +27,7 @@ class EasyAnimation {
   constructor(displayObject) {
     this.pluginName = 'easyAnimation';
     this.displayObject = displayObject;
-    this.tweenGroup = new Tiny.TWEEN.Group();
+    this.tweenGroup = new EasyAnimation._Tiny.TWEEN.Group();
     this.tweenAnimationCache = {};
     this.playingAimationCompleteTimes = {};
     this.playingAnimation = '';
@@ -121,8 +121,8 @@ class EasyAnimation {
         let tweenAnimation = configs.reduce((prevItem, curItem, index) => {
           const { property, target, to, easeFunction, duration } = curItem;
           const _updateProperty = property.split('.');
-          const _easeFunction = easeFunction.split('.').reduce((prev, cur) => prev[ cur ], Tiny.TWEEN.Easing);
-          const tween = new Tiny.TWEEN.Tween(target, this.tweenGroup);
+          const _easeFunction = easeFunction.split('.').reduce((prev, cur) => prev[ cur ], EasyAnimation._Tiny.TWEEN.Easing);
+          const tween = new EasyAnimation._Tiny.TWEEN.Tween(target, this.tweenGroup);
           const initValue = target[ property ];
           tween.animationName = animationName;
           tween.to(to, duration);
@@ -155,7 +155,7 @@ class EasyAnimation {
               if (animationTotalCount === clipCompleteTimes) {
                 this.__setAnimationClipCompleteTimes(this.playingAnimation, 0);
                 // 延迟一下，修复tween状态改变不及时的问题
-                requestAnimationFrame(() => {
+                EasyAnimation._window.requestAnimationFrame(() => {
                   this.__playAnimation(this.playingAnimation);
                 });
               }
@@ -163,7 +163,7 @@ class EasyAnimation {
               if (clipCompleteTimes % animationTotalCount === 0 && this.playTimes > this.chainAnimationCompleteTimes + 1) {
                 this.chainAnimationCompleteTimes++;
                 // 延迟一下，修复tween状态改变不及时的问题
-                requestAnimationFrame(() => {
+                EasyAnimation._window.requestAnimationFrame(() => {
                   this.__playAnimation(this.playingAnimation);
                 });
               }
@@ -285,17 +285,22 @@ class EasyAnimation {
 }
 
 (() => {
-  let globalTiny;
+  let _globalTiny;
+  let _window;
 
   try {
-    globalTiny = $global.Tiny;
+    _globalTiny = $global.Tiny;
+    _window = $global.window;
   } catch (e) {
-    globalTiny = window.Tiny;
+    _globalTiny = window.Tiny;
+    _window = window;
   }
 
-  if (!globalTiny) {
+  if (!_globalTiny) {
     throw new Error('Tiny is required');
   }
 
-  globalTiny.DisplayObject.registerPlugin('easyAnimation', EasyAnimation);
+  EasyAnimation._Tiny = _globalTiny;
+  EasyAnimation._window = _window;
+  _globalTiny.DisplayObject.registerPlugin('easyAnimation', EasyAnimation);
 })();
