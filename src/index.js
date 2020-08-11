@@ -155,16 +155,18 @@ class EasyAnimation {
               if (animationTotalCount === clipCompleteTimes) {
                 this.__setAnimationClipCompleteTimes(this.playingAnimation, 0);
                 // 延迟一下，修复tween状态改变不及时的问题
-                EasyAnimation._window.requestAnimationFrame(() => {
+                const rafId = EasyAnimation._window.requestAnimationFrame(() => {
                   this.__playAnimation(this.playingAnimation);
+                  EasyAnimation._window.cancelAnimationFrame(rafId);
                 });
               }
             } else {
               if (clipCompleteTimes % animationTotalCount === 0 && this.playTimes > this.chainAnimationCompleteTimes + 1) {
                 this.chainAnimationCompleteTimes++;
                 // 延迟一下，修复tween状态改变不及时的问题
-                EasyAnimation._window.requestAnimationFrame(() => {
+                const rafId = EasyAnimation._window.requestAnimationFrame(() => {
                   this.__playAnimation(this.playingAnimation);
+                  EasyAnimation._window.cancelAnimationFrame(rafId);
                 });
               }
 
