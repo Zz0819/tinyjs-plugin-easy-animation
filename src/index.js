@@ -17,7 +17,7 @@
  * @class EasyAnimation
  */
 
-import { parsePercent, isUndefined } from './uitls';
+import { parsePercent, isUndefined, deepCloneConfig } from './utils';
 
 class EasyAnimation {
   /**
@@ -48,7 +48,7 @@ class EasyAnimation {
       this.displayObject.containerUpdateTransform.call(this.displayObject);
     };
 
-    const tweenConfigs = this.__parseAnimationConfig(config);
+    const tweenConfigs = this.__parseAnimationConfig(deepCloneConfig(config));
     this.__createTween(tweenConfigs);
   }
 
@@ -226,11 +226,13 @@ class EasyAnimation {
 
     animationNames.forEach(animationName => {
       const curAnimationConfig = config[ animationName ];
+
       curAnimationConfig.forEach(animation => {
         let { property, easeFunction = 'Linear.None', duration, clips } = animation;
 
         clips.map(item => {
           const { percent } = item;
+
           if (percent) {
             item.percent = parsePercent(percent);
           }
