@@ -169,15 +169,17 @@ var config = {
     * @method setAnimationConfig 设置动画配置
     * @for EasyAnimation
     * @param {Object} config 动画描述文件
+    * @param {Boolean} useRelativePositionValue 使用相对位置计算位移
     */
-    EasyAnimation.prototype.setAnimationConfig(config);
+    EasyAnimation.prototype.setAnimationConfig(config, useRelativePositionValue);
 
     /**
     * @method play 播放动画
     * @param {String} animationName 播放的动画名称（配置文件中定义）
     * @param {Number} playTimes 当前动画播放的次数
+    * @param {String}[animationFillMode='forwards'] animationFillMode 类似 css3 animation-fill-mode ，目前支持 forwards 和 backwards。详见 https://developer.mozilla.org/zh-CN/docs/Web/CSS/animation-fill-mode
     */
-    EasyAnimation.prototype.play(animationName, playTimes);
+    EasyAnimation.prototype.play(animationName, playTimes, animationFillMode);
 
     /**
     * @method stop 停止动画

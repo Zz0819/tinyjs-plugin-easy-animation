@@ -17,7 +17,19 @@
  * @class EasyAnimation
  */
 
-import { parsePercent, isUndefined, deepCloneConfig } from './utils';
+import {
+  parsePercent,
+  isUndefined,
+  deepCloneConfig,
+  xRequestAnimationFrame,
+  xCancelAnimationFrame,
+  EasyAnimationTiny, getParentRelativePosValue,
+} from './utils';
+
+const ANIMATION_FILL_MODE = {
+  'FORWARDS': 'forwards',
+  'BACKWARDS': 'backwards',
+};
 
 class EasyAnimation {
   /**
@@ -27,37 +39,44 @@ class EasyAnimation {
   constructor(displayObject) {
     this.pluginName = 'easyAnimation';
     this.displayObject = displayObject;
-    this.tweenGroup = new EasyAnimation._Tiny.TWEEN.Group();
+    this.tweenGroup = new EasyAnimationTiny.TWEEN.Group();
     this.tweenAnimationCache = {};
     this.playingAimationCompleteTimes = {};
     this.playingAnimation = '';
     this.playTimes = 1;
     this.chainAnimationCompleteTimes = 0;
     this.playing = false;
+    this.useRelativePositionValue = false;
+    this.animationFillMode = 'forwards';
   }
 
   /**
    * @method setAnimationConfig 设置动画配置
    * @for EasyAnimation
    * @param {Object} config 动画描述文件
+   * @param {Boolean} useRelativePositionValue 使用相对位置计算位移
    */
-  setAnimationConfig(config) {
+  setAnimationConfig(config, useRelativePositionValue) {
     this.displayObject.updateTransform = () => {
       this.tweenGroup.update();
       // eslint-disable-next-line no-useless-call
       this.displayObject.containerUpdateTransform.call(this.displayObject);
     };
 
+    this.useRelativePositionValue = useRelativePositionValue;
+
     const tweenConfigs = this.__parseAnimationConfig(deepCloneConfig(config));
+
     this.__createTween(tweenConfigs);
   }
 
   /**
    * @method play 播放动画
    * @param {String} animationName 播放的动画名称（配置文件中定义）
-   * @param {Number} playTimes 当前动画播放的次数
+   * @param {Number}[playTimes=1] playTimes 当前动画播放的次数
+   * @param {String}[animationFillMode='forwards'] animationFillMode 类似 css3 animation-fill-mode ，目前支持 forwards 和 backwards。详见 https://developer.mozilla.org/zh-CN/docs/Web/CSS/animation-fill-mode
    */
-  play(animationName, playTimes) {
+  play(animationName, playTimes, animationFillMode) {
     const animations = this.tweenAnimationCache[ animationName ];
     if (!animations) {
       throw new Error(`can not find animationName {${animationName}} in your configs.`);
@@ -67,9 +86,21 @@ class EasyAnimation {
       return;
     }
 
-    this.playTimes = playTimes || 1;
-    this.playing = true;
+    // 新加了参数 animationFillMode ，为了兼容老用法，需要对参数做判断。保证可以不传 playTimes 也可以配置 animationFillMode；
+    if (typeof playTimes === 'number') {
+      this.playTimes = playTimes || 1;
+    }
+
+    if (typeof playTimes === 'string') {
+      this.animationFillMode = playTimes;
+    }
+
+    if (animationFillMode) {
+      this.animationFillMode = animationFillMode;
+    }
+
     this.playingAnimation = animationName;
+    this.playing = true;
     this.__playAnimation(animationName);
   }
 
@@ -113,27 +144,25 @@ class EasyAnimation {
     animationNames.forEach(animationName => {
       const tweenConfig = tweenConfigs[ animationName ];
       const propertyKeys = Object.keys(tweenConfig);
+      const displayObjectInitProperty = {};
 
       this.tweenAnimationCache[ animationName ] = propertyKeys.map(property => {
         const configs = tweenConfig[ property ];
         let tweenCount = 0;
         let firstTween = null;
         let tweenAnimation = configs.reduce((prevItem, curItem, index) => {
-          const { property, target, to, easeFunction, duration } = curItem;
+          const { property, target, to, easeFunction, duration, delay } = curItem;
           const _updateProperty = property.split('.');
-          const _easeFunction = easeFunction.split('.').reduce((prev, cur) => prev[ cur ], EasyAnimation._Tiny.TWEEN.Easing);
-          const tween = new EasyAnimation._Tiny.TWEEN.Tween(target, this.tweenGroup);
+          const _easeFunction = easeFunction.split('.').reduce((prev, cur) => prev[ cur ], EasyAnimationTiny.TWEEN.Easing);
+          const tween = new EasyAnimationTiny.TWEEN.Tween(target, this.tweenGroup);
           const initValue = target[ property ];
+          this.__cacheDisplayObjectInitPropertyValue(_updateProperty, property, displayObjectInitProperty);
           tween.animationName = animationName;
           tween.to(to, duration);
           tween.easing(_easeFunction);
+          tween.delay(delay);
           tween.onUpdate(() => {
-            if (_updateProperty.length > 1) {
-              this.displayObject[ _updateProperty[ 0 ] ][ _updateProperty[ 1 ] ] = target[ property ];
-              return;
-            }
-
-            this.displayObject[ _updateProperty[ 0 ] ] = target[ property ];
+            this.__updateDisplayObjectProperty(_updateProperty, target[ property ]);
           });
           tween.onComplete((data) => {
             const playingAnimations = this.tweenAnimationCache[ this.playingAnimation ];
@@ -155,18 +184,18 @@ class EasyAnimation {
               if (animationTotalCount === clipCompleteTimes) {
                 this.__setAnimationClipCompleteTimes(this.playingAnimation, 0);
                 // 延迟一下，修复tween状态改变不及时的问题
-                const rafId = EasyAnimation._window.requestAnimationFrame(() => {
+                const rafId = xRequestAnimationFrame(() => {
                   this.__playAnimation(this.playingAnimation);
-                  EasyAnimation._window.cancelAnimationFrame(rafId);
+                  xCancelAnimationFrame(rafId);
                 });
               }
             } else {
               if (clipCompleteTimes % animationTotalCount === 0 && this.playTimes > this.chainAnimationCompleteTimes + 1) {
                 this.chainAnimationCompleteTimes++;
                 // 延迟一下，修复tween状态改变不及时的问题
-                const rafId = EasyAnimation._window.requestAnimationFrame(() => {
+                const rafId = xRequestAnimationFrame(() => {
                   this.__playAnimation(this.playingAnimation);
-                  EasyAnimation._window.cancelAnimationFrame(rafId);
+                  xCancelAnimationFrame(rafId);
                 });
               }
 
@@ -175,6 +204,12 @@ class EasyAnimation {
                 this.__setAnimationClipCompleteTimes(this.playingAnimation, 0);
                 this.playTimes = 1;
                 this.chainAnimationCompleteTimes = 0;
+                if (this.animationFillMode === ANIMATION_FILL_MODE.BACKWARDS) {
+                  Object.keys(displayObjectInitProperty).forEach(key => {
+                    const _updateProperty = key.split('.');
+                    this.__updateDisplayObjectProperty(_updateProperty, displayObjectInitProperty[ key ]);
+                  });
+                }
                 this.displayObject.emit('onAnimationEnd', this.playingAnimation);
               }
             }
@@ -219,6 +254,25 @@ class EasyAnimation {
     }
   }
 
+  __updateDisplayObjectProperty(updatePropertyList, value) {
+    if (updatePropertyList.length > 1) {
+      this.displayObject[ updatePropertyList[ 0 ] ][ updatePropertyList[ 1 ] ] = value;
+      return;
+    }
+
+    this.displayObject[ updatePropertyList[ 0 ] ] = value;
+  }
+
+  __cacheDisplayObjectInitPropertyValue(_updateProperty, property, map) {
+    if (_updateProperty.length > 1) {
+      map[ property ] = this.displayObject[ _updateProperty[ 0 ] ][ _updateProperty[ 1 ] ];
+    } else {
+      map[ property ] = this.displayObject[ _updateProperty[ 0 ] ];
+    }
+
+    return map;
+  }
+
   __parseAnimationConfig(config) {
     const animationNames = Object.keys(config);
     let tweenParams = {};
@@ -237,6 +291,10 @@ class EasyAnimation {
             item.percent = parsePercent(percent);
           }
 
+          if (property === 'rotation') {
+            item.value = EasyAnimationTiny.deg2radian(item.value);
+          }
+
           return item;
         }).sort((a, b) => {
           if (!isUndefined(a.startTime) && !isUndefined(b.startTime)) {
@@ -250,6 +308,8 @@ class EasyAnimation {
           }
 
           let _duration = clips[ index + 1 ].startTime - clip.startTime;
+          let targetValue = clip.value;
+          let toValue = clips[ index + 1 ].value;
 
           if (!isUndefined(clip.percent) && !isUndefined(clips[ index + 1 ].percent)) {
             _duration = clips[ index + 1 ].percent * duration - clip.percent * duration;
@@ -260,16 +320,23 @@ class EasyAnimation {
             throw new Error('animation clips property startTime or percent is required!');
           }
 
+          if (this.useRelativePositionValue && (property === 'position.x' || property === 'position.y')) {
+            const values = getParentRelativePosValue(this.displayObject, property, targetValue, toValue, index);
+            targetValue = values.targetValue;
+            toValue = values.toValue;
+          }
+
           const param = {
             property,
             target: {
-              [ property ]: clip.value,
+              [ property ]: targetValue,
             },
             to: {
-              [ property ]: clips[ index + 1 ].value,
+              [ property ]: toValue,
             },
             duration: _duration,
             easeFunction: clip.easeFunction || easeFunction,
+            delay: clip.delay || 0,
           };
 
           if (tweenParams[ property ]) {
@@ -289,22 +356,9 @@ class EasyAnimation {
 }
 
 (() => {
-  let _globalTiny;
-  let _window;
-
-  try {
-    _globalTiny = $global.Tiny;
-    _window = $global.window;
-  } catch (e) {
-    _globalTiny = window.Tiny;
-    _window = window;
-  }
-
-  if (!_globalTiny) {
+  if (!EasyAnimationTiny) {
     throw new Error('Tiny is required');
   }
 
-  EasyAnimation._Tiny = _globalTiny;
-  EasyAnimation._window = _window;
-  _globalTiny.DisplayObject.registerPlugin('easyAnimation', EasyAnimation);
+  EasyAnimationTiny.DisplayObject.registerPlugin('easyAnimation', EasyAnimation);
 })();

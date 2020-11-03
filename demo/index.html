@@ -36,7 +36,7 @@
   var sprite3 = Tiny.Sprite.fromImage('https://gw.alipayobjects.com/as/g/tiny/resources/1.0.0/images/logo.png');
   sprite1.setScale(0.3, 0.3);
   sprite2.setScale(0.3, 0.3);
-  sprite3.setScale(0, 0);
+  sprite3.setScale(0.3, 0.3);
   container.addChild(sprite1, sprite2, sprite3);
 
   sprite1.setPosition(20, 20);
@@ -116,8 +116,11 @@
         property: 'position.x',
         easeFunction: 'Linear.None',
         clips: [
-          { startTime: 0, value: sprite3.position.x },
-          { startTime: 1000, value: sprite3.position.x - 50 },
+          { startTime: 0, value: 210 },
+          { startTime: 1000, value: 200 },
+          { startTime: 2000, value: 150 },
+          { startTime: 3000, value: 440 },
+          { startTime: 4000, value: 300 },
         ],
       },
     ],
@@ -128,8 +131,8 @@
         duration: 1000,
         clips: [
           { percent: '0%', value: 0 },
-          { percent: '50%', value: Tiny.deg2radian(360) },
-          { percent: '100%', value: Tiny.deg2radian(0) },
+          { percent: '50%', value: 360 },
+          { percent: '100%', value: 0 },
         ],
       },
       {
@@ -192,7 +195,7 @@
   sprite2.interactive = true;
   sprite3.interactive = true;
   sprite2.on('pointertap', () => {
-    sprite3.plugins[ 'easyAnimation' ].play('scale', 2);
+    sprite3.plugins[ 'easyAnimation' ].play('scale', 2, 'backwards');
   });
   sprite3.setAnchor(0.5, 0.5);
   sprite3.on('pointertap', () => {

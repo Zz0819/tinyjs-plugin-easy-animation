@@ -1,3 +1,19 @@
+let _globalTiny;
+let _window;
+
+try {
+  _globalTiny = $global.Tiny;
+  _window = $global.window;
+} catch (e) {
+  _globalTiny = window.Tiny;
+  _window = window;
+}
+
+const xEval = (operation) => {
+  const FN = Function;
+  return (new FN(`return ${operation}`))();
+};
+
 export const parsePercent = (percentValue) => {
   return percentValue.slice(0, -1) / 100;
 };
@@ -31,3 +47,54 @@ export const deepCloneConfig = (config) => {
 
   return configClone;
 };
+
+export const xRequestAnimationFrame = (callback) => {
+  if (navigator.canUseBinding) {
+    return setTimeout(() => {
+      callback && callback();
+    }, 0);
+  } else {
+    return _window.requestAnimationFrame(() => {
+      callback && callback();
+    });
+  }
+};
+
+export const xCancelAnimationFrame = (handler) => {
+  if (navigator.canUseBinding) {
+    clearTimeout(handler);
+  } else {
+    _window.cancelAnimationFrame(handler);
+  }
+};
+
+export const getParentRelativePosValue = (displayObject, property, targetValue, toValue, clipIndex) => {
+  // 更新一下 displayObject 的 transform 保证能拿到正确的。
+  displayObject.displayObjectUpdateTransform();
+
+  // const { a, d } = displayObject.worldTransform;
+  const operator = toValue < targetValue ? '-' : '+';
+  let localValue;
+  let deltaValue = toValue - targetValue;
+
+  if (property === 'position.x') {
+    // deltaValue *= a;
+    localValue = displayObject.localTransform.tx;
+  } else {
+    // deltaValue *= d;
+    localValue = displayObject.localTransform.ty;
+  }
+
+  toValue = `${operator}${Math.abs(deltaValue)}`;
+
+  if (clipIndex === 0) {
+    displayObject.__easyAnimationOperation = toValue;
+    return { targetValue: localValue, toValue };
+  } else {
+    const targetValue = xEval(`${localValue}${displayObject.__easyAnimationOperation}`);
+    displayObject.__easyAnimationOperation += toValue;
+    return { targetValue, toValue };
+  }
+};
+
+export const EasyAnimationTiny = _globalTiny;
