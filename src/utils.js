@@ -1,14 +1,3 @@
-let _globalTiny;
-let _window;
-
-try {
-  _globalTiny = $global.Tiny;
-  _window = $global.window;
-} catch (e) {
-  _globalTiny = window.Tiny;
-  _window = window;
-}
-
 const xEval = (operation) => {
   const FN = Function;
   return (new FN(`return ${operation}`))();
@@ -54,7 +43,7 @@ export const xRequestAnimationFrame = (callback) => {
       callback && callback();
     }, 0);
   } else {
-    return _window.requestAnimationFrame(() => {
+    return window.requestAnimationFrame(() => {
       callback && callback();
     });
   }
@@ -64,7 +53,7 @@ export const xCancelAnimationFrame = (handler) => {
   if (navigator.canUseBinding) {
     clearTimeout(handler);
   } else {
-    _window.cancelAnimationFrame(handler);
+    window.cancelAnimationFrame(handler);
   }
 };
 
@@ -96,5 +85,3 @@ export const getParentRelativePosValue = (displayObject, property, targetValue, 
     return { targetValue, toValue };
   }
 };
-
-export const EasyAnimationTiny = _globalTiny;

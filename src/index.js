@@ -23,7 +23,7 @@ import {
   deepCloneConfig,
   xRequestAnimationFrame,
   xCancelAnimationFrame,
-  EasyAnimationTiny, getParentRelativePosValue,
+  getParentRelativePosValue,
 } from './utils';
 
 const ANIMATION_FILL_MODE = {
@@ -39,7 +39,7 @@ class EasyAnimation {
   constructor(displayObject) {
     this.pluginName = 'easyAnimation';
     this.displayObject = displayObject;
-    this.tweenGroup = new EasyAnimationTiny.TWEEN.Group();
+    this.tweenGroup = new Tiny.TWEEN.Group();
     this.tweenAnimationCache = {};
     this.playingAimationCompleteTimes = {};
     this.playingAnimation = '';
@@ -153,8 +153,8 @@ class EasyAnimation {
         let tweenAnimation = configs.reduce((prevItem, curItem, index) => {
           const { property, target, to, easeFunction, duration, delay } = curItem;
           const _updateProperty = property.split('.');
-          const _easeFunction = easeFunction.split('.').reduce((prev, cur) => prev[ cur ], EasyAnimationTiny.TWEEN.Easing);
-          const tween = new EasyAnimationTiny.TWEEN.Tween(target, this.tweenGroup);
+          const _easeFunction = easeFunction.split('.').reduce((prev, cur) => prev[ cur ], Tiny.TWEEN.Easing);
+          const tween = new Tiny.TWEEN.Tween(target, this.tweenGroup);
           const initValue = target[ property ];
           this.__cacheDisplayObjectInitPropertyValue(_updateProperty, property, displayObjectInitProperty);
           tween.animationName = animationName;
@@ -292,7 +292,7 @@ class EasyAnimation {
           }
 
           if (property === 'rotation') {
-            item.value = EasyAnimationTiny.deg2radian(item.value);
+            item.value = Tiny.deg2radian(item.value);
           }
 
           return item;
@@ -355,10 +355,4 @@ class EasyAnimation {
   }
 }
 
-(() => {
-  if (!EasyAnimationTiny) {
-    throw new Error('Tiny is required');
-  }
-
-  EasyAnimationTiny.DisplayObject.registerPlugin('easyAnimation', EasyAnimation);
-})();
+Tiny.DisplayObject.registerPlugin('easyAnimation', EasyAnimation);
