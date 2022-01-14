@@ -133,6 +133,8 @@ class EasyAnimation {
   __playAnimation(animationName) {
     const animations = this.tweenAnimationCache[ animationName ];
 
+    if (!animations) return;
+
     animations.forEach(animation => {
       animation.start();
     });
