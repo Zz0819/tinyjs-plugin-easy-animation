@@ -20,6 +20,7 @@
 import {
   parsePercent,
   isUndefined,
+  isObject,
   deepCloneConfig,
   xRequestAnimationFrame,
   xCancelAnimationFrame,
@@ -66,7 +67,6 @@ class EasyAnimation {
     this.useRelativePositionValue = useRelativePositionValue;
 
     const tweenConfigs = this.__parseAnimationConfig(deepCloneConfig(config));
-
     this.__createTween(tweenConfigs);
   }
 
@@ -78,6 +78,7 @@ class EasyAnimation {
    */
   play(animationName, playTimes, animationFillMode) {
     const animations = this.tweenAnimationCache[ animationName ];
+
     if (!animations) {
       throw new Error(`can not find animationName {${animationName}} in your configs.`);
     }
@@ -151,20 +152,20 @@ class EasyAnimation {
       this.tweenAnimationCache[ animationName ] = propertyKeys.map(property => {
         const configs = tweenConfig[ property ];
         let tweenCount = 0;
-        let firstTween = null;
-        let tweenAnimation = configs.reduce((prevItem, curItem, index) => {
+        let headTween;
+        configs.reduce((prevItem, curItem) => {
           const { property, target, to, easeFunction, duration, delay } = curItem;
           const _updateProperty = property.split('.');
           const _easeFunction = easeFunction.split('.').reduce((prev, cur) => prev[ cur ], Tiny.TWEEN.Easing);
           const tween = new Tiny.TWEEN.Tween(target, this.tweenGroup);
-          const initValue = target[ property ];
+          const initValue = target[ property ] || { ...target };
           this.__cacheDisplayObjectInitPropertyValue(_updateProperty, property, displayObjectInitProperty);
           tween.animationName = animationName;
           tween.to(to, duration);
           tween.easing(_easeFunction);
           tween.delay(delay);
           tween.onUpdate(() => {
-            this.__updateDisplayObjectProperty(_updateProperty, target[ property ]);
+            this.__updateDisplayObjectProperty(_updateProperty, isUndefined(target[ property ]) ? target : target[ property ]);
           });
           tween.onComplete((data) => {
             const playingAnimations = this.tweenAnimationCache[ this.playingAnimation ];
@@ -178,7 +179,13 @@ class EasyAnimation {
 
             this.__setAnimationClipCompleteTimes(this.playingAnimation);
             this.displayObject.emit('onAnimationClipEnd', data);
-            target[ property ] = initValue;
+
+            if (this.useRelativePositionValue && property === 'position') {
+              target.x = initValue.x;
+              target.y = initValue.y;
+            } else {
+              target[ property ] = initValue;
+            }
 
             const clipCompleteTimes = this.__getAnimationClipCompleteTimes(this.playingAnimation);
 
@@ -218,22 +225,19 @@ class EasyAnimation {
           });
           tweenCount++;
 
+          // 如果是第一次遍历保存 tween 链的头，返回 headTween
           if (!prevItem) {
-            firstTween = tween;
-            return tween;
+            headTween = tween;
+            return headTween;
           }
 
+          // 每一次将前一个 tween 和 当前的 tween 连接起来
           prevItem.chain(tween);
-
-          if (!configs[ index + 1 ]) {
-            return firstTween;
-          } else {
-            return tween;
-          }
+          return tween;
         }, null);
-        tweenAnimation.tweenCount = tweenCount;
+        headTween.tweenCount = tweenCount;
 
-        return tweenAnimation;
+        return headTween;
       });
     });
   }
@@ -257,19 +261,41 @@ class EasyAnimation {
   }
 
   __updateDisplayObjectProperty(updatePropertyList, value) {
-    if (updatePropertyList.length > 1) {
-      this.displayObject[ updatePropertyList[ 0 ] ][ updatePropertyList[ 1 ] ] = value;
+    const [ property0, property1 ] = updatePropertyList;
+
+    if (isUndefined(this.displayObject[ property0 ])) {
+      console.warn(`DisplayObject no ${property0}`);
       return;
     }
 
-    this.displayObject[ updatePropertyList[ 0 ] ] = value;
+    if (property1) {
+      this.displayObject[ property0 ][ property1 ] = value;
+      return;
+    }
+
+    if (
+      isObject(this.displayObject[ property0 ]) &&
+      !isUndefined(this.displayObject[ property0 ][ 'x' ]) &&
+      !isUndefined(this.displayObject[ property0 ][ 'y' ])
+    ) {
+      this.displayObject[ property0 ][ 'x' ] = isObject(value) ? value.x : value;
+      this.displayObject[ property0 ][ 'y' ] = isObject(value) ? value.y : value;
+    } else {
+      this.displayObject[ property0 ] = value;
+    }
   }
 
   __cacheDisplayObjectInitPropertyValue(_updateProperty, property, map) {
+    if (!isUndefined(map[ property ])) {
+      return;
+    }
+
     if (_updateProperty.length > 1) {
       map[ property ] = this.displayObject[ _updateProperty[ 0 ] ][ _updateProperty[ 1 ] ];
     } else {
-      map[ property ] = this.displayObject[ _updateProperty[ 0 ] ];
+      const value = this.displayObject[ _updateProperty[ 0 ] ];
+
+      map[ property ] = isObject(value) ? { x: value.x, y: value.y } : value;
     }
 
     return map;
@@ -312,6 +338,12 @@ class EasyAnimation {
           let _duration = clips[ index + 1 ].startTime - clip.startTime;
           let targetValue = clip.value;
           let toValue = clips[ index + 1 ].value;
+          let target = {
+            [ property ]: targetValue,
+          };
+          let to = {
+            [ property ]: toValue,
+          };
 
           if (!isUndefined(clip.percent) && !isUndefined(clips[ index + 1 ].percent)) {
             _duration = clips[ index + 1 ].percent * duration - clip.percent * duration;
@@ -322,20 +354,32 @@ class EasyAnimation {
             throw new Error('animation clips property startTime or percent is required!');
           }
 
-          if (this.useRelativePositionValue && (property === 'position.x' || property === 'position.y')) {
+          if (this.useRelativePositionValue && /position/.test(property)) {
             const values = getParentRelativePosValue(this.displayObject, property, targetValue, toValue, index);
             targetValue = values.targetValue;
             toValue = values.toValue;
+
+            if (property === 'position') {
+              target = {
+                ...targetValue,
+              };
+              to = {
+                ...toValue,
+              };
+            } else {
+              target = {
+                [ property ]: targetValue,
+              };
+              to = {
+                [ property ]: toValue,
+              };
+            }
           }
 
           const param = {
             property,
-            target: {
-              [ property ]: targetValue,
-            },
-            to: {
-              [ property ]: toValue,
-            },
+            target,
+            to,
             duration: _duration,
             easeFunction: clip.easeFunction || easeFunction,
             delay: clip.delay || 0,

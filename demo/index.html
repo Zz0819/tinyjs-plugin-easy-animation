@@ -90,8 +90,8 @@
         duration: 1000,
         clips: [
           { percent: '0%', value: 0 },
-          { percent: '50%', value: Tiny.deg2radian(360) },
-          { percent: '100%', value: Tiny.deg2radian(0) },
+          { percent: '50%', value: 360 },
+          { percent: '100%', value: 0 },
         ],
       }, {
         property: 'scale.x',
@@ -169,16 +169,7 @@
     ],
     bounceOut: [
       {
-        property: 'scale.x',
-        easeFunction: 'Elastic.Out',
-        duration: 1000,
-        clips: [
-          { percent: '0%', value: 0 },
-          { percent: '100%', value: 0.3 },
-        ],
-      },
-      {
-        property: 'scale.y',
+        property: 'scale',
         easeFunction: 'Elastic.Out',
         duration: 1000,
         clips: [
@@ -197,7 +188,7 @@
   sprite2.interactive = true;
   sprite3.interactive = true;
   sprite2.on('pointertap', () => {
-    sprite3.plugins[ 'easyAnimation' ].play('scale', 2, 'backwards');
+    sprite3.plugins[ 'easyAnimation' ].play('scale', 2);
   });
   sprite3.setAnchor(0.5, 0.5);
   sprite3.on('pointertap', () => {

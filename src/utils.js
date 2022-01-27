@@ -1,6 +1,14 @@
-const xEval = (operation) => {
+const xEval = (localValue, operation) => {
   const FN = Function;
-  return (new FN(`return ${operation}`))();
+
+  if (typeof localValue === 'number') {
+    return (new FN(`return ${localValue}${operation}`))();
+  }
+
+  return {
+    x: (new FN(`return ${localValue.x}${operation}`))(),
+    y: (new FN(`return ${localValue.y}${operation}`))(),
+  };
 };
 
 export const parsePercent = (percentValue) => {
@@ -9,6 +17,10 @@ export const parsePercent = (percentValue) => {
 
 export const isUndefined = (value) => {
   return value === void 0;
+};
+
+export const isObject = (target) => {
+  return Object.prototype.toString.call(target) === '[object Object]';
 };
 
 export const deepCloneConfig = (config) => {
@@ -61,27 +73,32 @@ export const getParentRelativePosValue = (displayObject, property, targetValue, 
   // 更新一下 displayObject 的 transform 保证能拿到正确的。
   displayObject.displayObjectUpdateTransform();
 
-  // const { a, d } = displayObject.worldTransform;
   const operator = toValue < targetValue ? '-' : '+';
   let localValue;
   let deltaValue = toValue - targetValue;
 
   if (property === 'position.x') {
-    // deltaValue *= a;
     localValue = displayObject.localTransform.tx;
-  } else {
-    // deltaValue *= d;
+  } else if (property === 'position.y') {
     localValue = displayObject.localTransform.ty;
+  } else {
+    localValue = { x: displayObject.localTransform.tx, y: displayObject.localTransform.ty };
   }
 
   toValue = `${operator}${Math.abs(deltaValue)}`;
 
   if (clipIndex === 0) {
     displayObject.__easyAnimationOperation = toValue;
-    return { targetValue: localValue, toValue };
+    return {
+      targetValue: localValue,
+      toValue: typeof localValue === 'object' ? { x: toValue, y: toValue } : toValue,
+    };
   } else {
-    const targetValue = xEval(`${localValue}${displayObject.__easyAnimationOperation}`);
+    const targetValue = xEval(localValue, displayObject.__easyAnimationOperation);
     displayObject.__easyAnimationOperation += toValue;
-    return { targetValue, toValue };
+    return {
+      targetValue,
+      toValue: typeof localValue === 'object' ? { x: toValue, y: toValue } : toValue,
+    };
   }
 };
