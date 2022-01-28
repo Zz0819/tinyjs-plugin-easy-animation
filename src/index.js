@@ -20,6 +20,7 @@
 import {
   parsePercent,
   isUndefined,
+  isObject,
   deepCloneConfig,
   xRequestAnimationFrame,
   xCancelAnimationFrame,
@@ -66,7 +67,6 @@ class EasyAnimation {
     this.useRelativePositionValue = useRelativePositionValue;
 
     const tweenConfigs = this.__parseAnimationConfig(deepCloneConfig(config));
-
     this.__createTween(tweenConfigs);
   }
 
@@ -78,6 +78,7 @@ class EasyAnimation {
    */
   play(animationName, playTimes, animationFillMode) {
     const animations = this.tweenAnimationCache[ animationName ];
+
     if (!animations) {
       throw new Error(`can not find animationName {${animationName}} in your configs.`);
     }
@@ -151,20 +152,34 @@ class EasyAnimation {
       this.tweenAnimationCache[ animationName ] = propertyKeys.map(property => {
         const configs = tweenConfig[ property ];
         let tweenCount = 0;
-        let firstTween = null;
-        let tweenAnimation = configs.reduce((prevItem, curItem, index) => {
+        let headTween;
+        configs.reduce((prevItem, curItem) => {
           const { property, target, to, easeFunction, duration, delay } = curItem;
           const _updateProperty = property.split('.');
-          const _easeFunction = easeFunction.split('.').reduce((prev, cur) => prev[ cur ], Tiny.TWEEN.Easing);
+          const _easeFunction = typeof easeFunction === 'function'
+            ? easeFunction
+            : easeFunction.split('.').reduce((prev, cur) => prev[ cur ], Tiny.TWEEN.Easing);
           const tween = new Tiny.TWEEN.Tween(target, this.tweenGroup);
-          const initValue = target[ property ];
+          /**
+           * 由于 position 属性的相对位置计算的特殊性，以及 tween 的 target 和 to 属性无法嵌套对象，
+           * 所以 position 直接使用了 {x: number, y: number} 作为 tween 的参数，
+           * 优先取 target[ property ] 取不到说明是开启了相对位移计算的 position ，直接浅拷贝（避免引用类型问题）一份作为初始值。
+           */
+          const initValue = target[ property ] || { ...target };
           this.__cacheDisplayObjectInitPropertyValue(_updateProperty, property, displayObjectInitProperty);
           tween.animationName = animationName;
           tween.to(to, duration);
           tween.easing(_easeFunction);
           tween.delay(delay);
           tween.onUpdate(() => {
-            this.__updateDisplayObjectProperty(_updateProperty, target[ property ]);
+            this.__updateDisplayObjectProperty(
+              _updateProperty,
+              /**
+               * 由于存在相对位置计算，target 值可能是 {x: number, y: number}，也可能是 { [property]: number },
+               * 所以判断一下，保证取值正确。
+               */
+              isUndefined(target[ property ]) ? target : target[ property ]
+            );
           });
           tween.onComplete((data) => {
             const playingAnimations = this.tweenAnimationCache[ this.playingAnimation ];
@@ -178,7 +193,16 @@ class EasyAnimation {
 
             this.__setAnimationClipCompleteTimes(this.playingAnimation);
             this.displayObject.emit('onAnimationClipEnd', data);
-            target[ property ] = initValue;
+
+            /**
+             * 这里在每个 clip 播放完成后重置回 initValue 时也要做区分。
+             */
+            if (this.useRelativePositionValue && property === 'position') {
+              target.x = initValue.x;
+              target.y = initValue.y;
+            } else {
+              target[ property ] = initValue;
+            }
 
             const clipCompleteTimes = this.__getAnimationClipCompleteTimes(this.playingAnimation);
 
@@ -218,22 +242,19 @@ class EasyAnimation {
           });
           tweenCount++;
 
+          // 如果是第一次遍历保存 tween 链的头，返回 headTween
           if (!prevItem) {
-            firstTween = tween;
-            return tween;
+            headTween = tween;
+            return headTween;
           }
 
+          // 每一次将前一个 tween 和 当前的 tween 连接起来
           prevItem.chain(tween);
-
-          if (!configs[ index + 1 ]) {
-            return firstTween;
-          } else {
-            return tween;
-          }
+          return tween;
         }, null);
-        tweenAnimation.tweenCount = tweenCount;
+        headTween.tweenCount = tweenCount;
 
-        return tweenAnimation;
+        return headTween;
       });
     });
   }
@@ -257,19 +278,52 @@ class EasyAnimation {
   }
 
   __updateDisplayObjectProperty(updatePropertyList, value) {
-    if (updatePropertyList.length > 1) {
-      this.displayObject[ updatePropertyList[ 0 ] ][ updatePropertyList[ 1 ] ] = value;
+    const [ property0, property1 ] = updatePropertyList;
+
+    if (isUndefined(this.displayObject[ property0 ])) {
+      console.warn(`DisplayObject no ${property0}`);
       return;
     }
 
-    this.displayObject[ updatePropertyList[ 0 ] ] = value;
+    if (property1) {
+      this.displayObject[ property0 ][ property1 ] = value;
+      return;
+    }
+
+    /**
+     * 这里其实应该判断是不是 instanceof observePoint 但是 Tiny 有个奇怪的逻辑所以不敢用。
+     * https://code.alipay.com/tiny/tiny/blob/master/src%2Ftiny%2Fcore%2Fdisplay%2FDisplayObject.js#L26
+     */
+    if (
+      isObject(this.displayObject[ property0 ]) &&
+      !isUndefined(this.displayObject[ property0 ][ 'x' ]) &&
+      !isUndefined(this.displayObject[ property0 ][ 'y' ])
+    ) {
+      /**
+       * 由于因为提供了简写 observePoint 属性的能力，比如原先的 scale.x -> 0.1 scale.y -> 0.1 , 可以简写成 scale -> 0.1。
+       * 所以需要同时修改 x 和 y 的属性，并且因为 animation-fill-mode 其实是取的 DisplayObject 的真是属性，会有 observePoint 的实例的情况。
+       * 所以需要判断是否是对象，是就取 value.x 否则取 value。
+       */
+      this.displayObject[ property0 ][ 'x' ] = isObject(value) ? value.x : value;
+      this.displayObject[ property0 ][ 'y' ] = isObject(value) ? value.y : value;
+    } else {
+      this.displayObject[ property0 ] = value;
+    }
   }
 
   __cacheDisplayObjectInitPropertyValue(_updateProperty, property, map) {
+    if (!isUndefined(map[ property ])) {
+      return;
+    }
+
     if (_updateProperty.length > 1) {
       map[ property ] = this.displayObject[ _updateProperty[ 0 ] ][ _updateProperty[ 1 ] ];
     } else {
-      map[ property ] = this.displayObject[ _updateProperty[ 0 ] ];
+      const value = this.displayObject[ _updateProperty[ 0 ] ];
+      /**
+       * 这里因为 observePoint 的简写的存在，所以需要处理 value 需要判断是简单类型还是对象。
+       */
+      map[ property ] = isObject(value) ? { x: value.x, y: value.y } : value;
     }
 
     return map;
@@ -322,20 +376,38 @@ class EasyAnimation {
             throw new Error('animation clips property startTime or percent is required!');
           }
 
-          if (this.useRelativePositionValue && (property === 'position.x' || property === 'position.y')) {
+          /**
+           * 需要在 position.x 和 position.y 的基础上增加在 position 简写的支持
+           */
+          if (this.useRelativePositionValue && /position/.test(property)) {
             const values = getParentRelativePosValue(this.displayObject, property, targetValue, toValue, index);
             targetValue = values.targetValue;
             toValue = values.toValue;
           }
 
+          let target = {
+            [ property ]: targetValue,
+          };
+          let to = {
+            [ property ]: toValue,
+          };
+
+          /**
+           * 如果是相对位移计算，并且是简写属性，需要修改 target 和 to 的数据格式。
+           */
+          if (property === 'position' && this.useRelativePositionValue) {
+            target = {
+              ...targetValue,
+            };
+            to = {
+              ...toValue,
+            };
+          }
+
           const param = {
             property,
-            target: {
-              [ property ]: targetValue,
-            },
-            to: {
-              [ property ]: toValue,
-            },
+            target,
+            to,
             duration: _duration,
             easeFunction: clip.easeFunction || easeFunction,
             delay: clip.delay || 0,
