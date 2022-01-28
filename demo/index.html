@@ -48,15 +48,7 @@
   sprite3.plugins[ 'easyAnimation' ].setAnimationConfig({
     popup: [
       {
-        property: 'scale.x',
-        clips: [
-          { startTime: 0, value: 1 },
-          { startTime: 1000, value: 0 },
-          { startTime: 2000, value: 1 },
-        ],
-      },
-      {
-        property: 'scale.y',
+        property: 'scale',
         clips: [
           { startTime: 0, value: 1 },
           { startTime: 1000, value: 0 },
@@ -102,16 +94,7 @@
           { percent: '50%', value: 0 },
           { percent: '100%', value: 1 },
         ],
-      }, {
-        property: 'scale.y',
-        easeFunction: 'Back.In',
-        duration: 1000,
-        clips: [
-          { percent: '0%', value: 1 },
-          { percent: '50%', value: 0 },
-          { percent: '100%', value: 1 },
-        ],
-      },
+      }
     ],
     move: [
       {
@@ -188,11 +171,11 @@
   sprite2.interactive = true;
   sprite3.interactive = true;
   sprite2.on('pointertap', () => {
-    sprite3.plugins[ 'easyAnimation' ].play('scale', 2);
+    sprite3.plugins[ 'easyAnimation' ].play('scale', 2, 'backwards');
   });
   sprite3.setAnchor(0.5, 0.5);
   sprite3.on('pointertap', () => {
-    sprite3.plugins[ 'easyAnimation' ].play('bounceOut', 2);
+    sprite3.plugins[ 'easyAnimation' ].play('popup', Infinity);
   });
 </script>
 </body>
