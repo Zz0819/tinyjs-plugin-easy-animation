@@ -174,6 +174,10 @@ class EasyAnimation {
           tween.onUpdate(() => {
             this.__updateDisplayObjectProperty(
               _updateProperty,
+              /**
+               * 由于存在相对位置计算，target 值可能是 {x: number, y: number}，也可能是 { [property]: number },
+               * 所以判断一下，保证取值正确。
+               */
               isUndefined(target[ property ]) ? target : target[ property ]
             );
           });
@@ -190,6 +194,9 @@ class EasyAnimation {
             this.__setAnimationClipCompleteTimes(this.playingAnimation);
             this.displayObject.emit('onAnimationClipEnd', data);
 
+            /**
+             * 这里在每个 clip 播放完成后重置回 initValue 时也要做区分。
+             */
             if (this.useRelativePositionValue && property === 'position') {
               target.x = initValue.x;
               target.y = initValue.y;
@@ -293,9 +300,9 @@ class EasyAnimation {
       !isUndefined(this.displayObject[ property0 ][ 'y' ])
     ) {
       /**
-       * 由于因为提供了简写 observePoint 属性的能力，比如原先的 scale.x -> 0.1 scale.y -> 0.1 , 可以简写成 scale -> 0.1
-       * 所以需要同时修改 x 和 y 的属性，并且因为 animation-fill-mode 其实是取的 DisplayObject 的真是属性，会有 observePoint 的实例的情况，
-       * 所以需要判断是否是对象，是就取 value.x 否则取 value
+       * 由于因为提供了简写 observePoint 属性的能力，比如原先的 scale.x -> 0.1 scale.y -> 0.1 , 可以简写成 scale -> 0.1。
+       * 所以需要同时修改 x 和 y 的属性，并且因为 animation-fill-mode 其实是取的 DisplayObject 的真是属性，会有 observePoint 的实例的情况。
+       * 所以需要判断是否是对象，是就取 value.x 否则取 value。
        */
       this.displayObject[ property0 ][ 'x' ] = isObject(value) ? value.x : value;
       this.displayObject[ property0 ][ 'y' ] = isObject(value) ? value.y : value;
@@ -314,7 +321,7 @@ class EasyAnimation {
     } else {
       const value = this.displayObject[ _updateProperty[ 0 ] ];
       /**
-       * 这里因为 observePoint 的简写的存在，所以需要处理 value 需要判断是简单类型还是对象
+       * 这里因为 observePoint 的简写的存在，所以需要处理 value 需要判断是简单类型还是对象。
        */
       map[ property ] = isObject(value) ? { x: value.x, y: value.y } : value;
     }
@@ -369,7 +376,9 @@ class EasyAnimation {
             throw new Error('animation clips property startTime or percent is required!');
           }
 
-          // 需要在 position.x 和 position.y 的基础上增加在 position 简写的支持
+          /**
+           * 需要在 position.x 和 position.y 的基础上增加在 position 简写的支持
+           */
           if (this.useRelativePositionValue && /position/.test(property)) {
             const values = getParentRelativePosValue(this.displayObject, property, targetValue, toValue, index);
             targetValue = values.targetValue;
@@ -383,7 +392,9 @@ class EasyAnimation {
             [ property ]: toValue,
           };
 
-          // 如果是相对位移计算，并且是简写属性，需要修改 target 和 to 的数据格式。
+          /**
+           * 如果是相对位移计算，并且是简写属性，需要修改 target 和 to 的数据格式。
+           */
           if (property === 'position' && this.useRelativePositionValue) {
             target = {
               ...targetValue,
